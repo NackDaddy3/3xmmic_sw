@@ -1,0 +1,25 @@
+var struct_ifx_rfe__configure_dios__t =
+[
+    [ "clk25_drive_strength", "struct_ifx_rfe__configure_dios__t.html#a7c484840756f356228c969abb1e9967c", null ],
+    [ "clk25_driver_config", "struct_ifx_rfe__configure_dios__t.html#a4519ccfe837c5875b079b3f2fe55f0b1", null ],
+    [ "clk25_pull_config", "struct_ifx_rfe__configure_dios__t.html#aa27e9279a4f89dc6030fac0a4222b5d1", null ],
+    [ "clkmcu_drive_strength", "struct_ifx_rfe__configure_dios__t.html#afadf81c5f4038420fc1b8910120347d8", null ],
+    [ "clkmcu_driver_config", "struct_ifx_rfe__configure_dios__t.html#ac1ca06ca09fefcd76ac05e082a841e20", null ],
+    [ "clkmcu_pull_config", "struct_ifx_rfe__configure_dios__t.html#a48251271cb40671bea074736eaad092e", null ],
+    [ "config_mask_ext", "struct_ifx_rfe__configure_dios__t.html#aaa547690c183d6cb76c90072d1a3de14", null ],
+    [ "dmux1_drive_strength", "struct_ifx_rfe__configure_dios__t.html#ad6bb404f70b7aaf1a1eb148bb1b9db6c", null ],
+    [ "dmux1_driver_config", "struct_ifx_rfe__configure_dios__t.html#ad11686d2c060a9c36f4a3192166f017f", null ],
+    [ "dmux1_pull_config", "struct_ifx_rfe__configure_dios__t.html#a47d7b58eb25f3a021c2ff103836a45d9", null ],
+    [ "dmux2_drive_strength", "struct_ifx_rfe__configure_dios__t.html#afad3949ad3c94111af291e2c037f714e", null ],
+    [ "dmux2_driver_config", "struct_ifx_rfe__configure_dios__t.html#ade12994539c90f8a8fc6e24d20a21d6e", null ],
+    [ "dmux2_pull_config", "struct_ifx_rfe__configure_dios__t.html#a1b3aefcf7ea3794a10daa38622de805f", null ],
+    [ "dmux3_drive_strength", "struct_ifx_rfe__configure_dios__t.html#a728a5bf46ea54644d61013eaa55f8e70", null ],
+    [ "dmux3_driver_config", "struct_ifx_rfe__configure_dios__t.html#a362fb6a37390c97f40b12343b6f37094", null ],
+    [ "dmux3_pull_config", "struct_ifx_rfe__configure_dios__t.html#a4baa46243fca4d14971ee103bcb77ba3", null ],
+    [ "rft_drive_strength", "struct_ifx_rfe__configure_dios__t.html#a4c2200f0dfe028ed48c18b5b31133c19", null ],
+    [ "rft_driver_config", "struct_ifx_rfe__configure_dios__t.html#ab0a038aef269ef8d9477544fc4292c22", null ],
+    [ "rft_pull_config", "struct_ifx_rfe__configure_dios__t.html#ad89602abb458d87a0a13b64e203c602f", null ],
+    [ "so_drive_strength", "struct_ifx_rfe__configure_dios__t.html#a6903c4a367546d23f10298c3e305d195", null ],
+    [ "so_driver_config", "struct_ifx_rfe__configure_dios__t.html#ab9ba04207574fdaf6efd64758259b6b3", null ],
+    [ "so_pull_config", "struct_ifx_rfe__configure_dios__t.html#a106a1beaec938aba61fea161c8238f1c", null ]
+];

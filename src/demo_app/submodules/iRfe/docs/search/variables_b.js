@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['maximumbaudrate_0',['maximumBaudrate',['../struct_ifx_qspi___spi_master.html#a13034851b4967a0897e730822e1cf5a6',1,'IfxQspi_SpiMaster']]],
+  ['maxspeed_1',['maxSpeed',['../struct_platform_spi_definition___master.html#a7d2463c312e25fdf8c1f42efd20c908c',1,'PlatformSpiDefinition_Master']]],
+  ['mclk_2',['mclk',['../struct_platform_spi_definition___master.html#a3e94dae9101386e5e25c62c97559d558',1,'PlatformSpiDefinition_Master']]],
+  ['measurement_5fsub_5ffunc_5fid_3',['measurement_sub_func_id',['../struct_ifx_rfe__measure_rx__t.html#af9a45db0cbbdec3708fef5cbee4d6e35',1,'IfxRfe_measureRx_t']]],
+  ['measurement_5fsub_5ffunc_5fsum_4',['measurement_sub_func_sum',['../struct_ifx_rfe__measure_rx_result__t.html#a4407698cab77df38aa9bc08e41f871cf',1,'IfxRfe_measureRxResult_t']]],
+  ['miso_5',['miso',['../struct_platform_spi_definition___master.html#aa78802f77f6f564a236a019047176cfa',1,'PlatformSpiDefinition_Master']]],
+  ['mode_6',['mode',['../struct_ifx_rfe__measure_tx__t.html#a0968ee4cd24de8ec8956c95604b9e426',1,'IfxRfe_measureTx_t::mode()'],['../struct_ifx_rfe__measure_tx_result__t.html#a437abd39c8bb40a6b1a7079fbc4ecb1b',1,'IfxRfe_measureTxResult_t::mode()'],['../struct_ifx_qspi___spi_master___input.html#a40b264ab073af608d24dad0b7aa98555',1,'IfxQspi_SpiMaster_Input::mode()'],['../struct_ifx_qspi___spi_master___output.html#a0ed3687f24289adb3a805fbe7ae1989f',1,'IfxQspi_SpiMaster_Output::mode()'],['../struct_ifx_qspi___spi_master___channel_config.html#a6dfbd77e2e7687249ccd9ad6a9fa0d6f',1,'IfxQspi_SpiMaster_ChannelConfig::mode()'],['../struct_ifx_qspi___spi_master___channel__s.html#ac77914a7730d171228c8fc9c935f86a5',1,'IfxQspi_SpiMaster_Channel_s::mode()']]],
+  ['monitoring_5fsub_5ffunc_5fid_7',['monitoring_sub_func_id',['../struct_ifx_rfe__execute_monitoring__t.html#a23c562e043b7ff407e99bbb19ea56464',1,'IfxRfe_executeMonitoring_t']]],
+  ['monitoring_5fsub_5ffunc_5fsum_8',['monitoring_sub_func_sum',['../struct_ifx_rfe__execute_monitoring_result__t.html#a6f66e2b375c1c658d1c50b39da65eb75',1,'IfxRfe_executeMonitoringResult_t']]],
+  ['mosi_9',['mosi',['../struct_platform_spi_definition___master.html#a04df4a0f236aa455a70354d4064db2a2',1,'PlatformSpiDefinition_Master']]],
+  ['movecountercontrol_10',['moveCounterControl',['../struct_ifx_qspi___spi_master___channel__s.html#a374b1161c6cea7d7a8087627f5155f01',1,'IfxQspi_SpiMaster_Channel_s']]],
+  ['movecounterenabled_11',['moveCounterEnabled',['../struct_ifx_qspi___spi_master___move_counter_control.html#ae355a24f36b3bb8b8e429a6cd2e62ac2',1,'IfxQspi_SpiMaster_MoveCounterControl']]],
+  ['mrst_12',['mrst',['../struct_ifx_qspi___spi_master___pins.html#ab93e1f7050aa1a803ee55a2d1148dac3',1,'IfxQspi_SpiMaster_Pins::mrst()'],['../struct_ifx_qspi___spi_slave___pins.html#abd7a5ce5978ca1bae9bb7a3eb65a42b7',1,'IfxQspi_SpiSlave_Pins::mrst()']]],
+  ['mrstmode_13',['mrstMode',['../struct_ifx_qspi___spi_master___pins.html#af26bf9fff5cd677065d9b1bfb9f84938',1,'IfxQspi_SpiMaster_Pins::mrstMode()'],['../struct_ifx_qspi___spi_slave___pins.html#a7ef3085148afe53f34452e51a2526749',1,'IfxQspi_SpiSlave_Pins::mrstMode()']]],
+  ['mtsr_14',['mtsr',['../struct_ifx_qspi___spi_master___pins.html#ae94d8700e88077a0be6fa7b0da54154b',1,'IfxQspi_SpiMaster_Pins::mtsr()'],['../struct_ifx_qspi___spi_slave___pins.html#a6bbf1221abac79f665bf66caf1a85957',1,'IfxQspi_SpiSlave_Pins::mtsr()']]],
+  ['mtsrmode_15',['mtsrMode',['../struct_ifx_qspi___spi_master___pins.html#a73fb19b2badc0f0da82bbb122f81ebc2',1,'IfxQspi_SpiMaster_Pins::mtsrMode()'],['../struct_ifx_qspi___spi_slave___pins.html#a4a4febf782c3da2045a1211d2cda0368',1,'IfxQspi_SpiSlave_Pins::mtsrMode()']]]
+];

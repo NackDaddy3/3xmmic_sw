@@ -1,0 +1,27 @@
+var struct_ifx_rfe__configure_tx_power__t =
+[
+    [ "action_mask", "struct_ifx_rfe__configure_tx_power__t.html#aedb6b0de4d5b11babbd55708296434b9", null ],
+    [ "ch_mask", "struct_ifx_rfe__configure_tx_power__t.html#a9e77ad4bec72722c15a1e81d9690896d", null ],
+    [ "plvl", "struct_ifx_rfe__configure_tx_power__t.html#ad57bf3718b8b8ed33b2ca704b3143bcc", null ],
+    [ "tx1_pa_slope_scale_fact", "struct_ifx_rfe__configure_tx_power__t.html#a7080a3b6c954ee24caec36e105b20805", null ],
+    [ "tx1_plvl_1", "struct_ifx_rfe__configure_tx_power__t.html#ae44e689e0f78fe42a237a29586e113c6", null ],
+    [ "tx1_plvl_2", "struct_ifx_rfe__configure_tx_power__t.html#a4b0127cfc7e74d534c41671c4804522c", null ],
+    [ "tx1_plvl_3", "struct_ifx_rfe__configure_tx_power__t.html#a31e0fd9aba5d91851e1c406f9600952f", null ],
+    [ "tx1_plvl_4", "struct_ifx_rfe__configure_tx_power__t.html#aa1f44df4184852fe7855b2aa3d142eac", null ],
+    [ "tx2_pa_slope_scale_fact", "struct_ifx_rfe__configure_tx_power__t.html#aef183666e880cb538a1b4860b76d19e8", null ],
+    [ "tx2_plvl_1", "struct_ifx_rfe__configure_tx_power__t.html#a2feb6faad80683cc37ae59d32b8dba46", null ],
+    [ "tx2_plvl_2", "struct_ifx_rfe__configure_tx_power__t.html#a4aec8860c0421ea5e13057d1349a6c47", null ],
+    [ "tx2_plvl_3", "struct_ifx_rfe__configure_tx_power__t.html#a14d7bcc4e8a5172818dd413bdc2e9736", null ],
+    [ "tx2_plvl_4", "struct_ifx_rfe__configure_tx_power__t.html#afc8e0f48d36641eb61ebe5deafae831b", null ],
+    [ "tx3_pa_slope_scale_fact", "struct_ifx_rfe__configure_tx_power__t.html#a04d1aa8da425549f2ce38e9c7d2ec427", null ],
+    [ "tx3_plvl_1", "struct_ifx_rfe__configure_tx_power__t.html#ade6ffb645b83153143f3100c98537dc7", null ],
+    [ "tx3_plvl_2", "struct_ifx_rfe__configure_tx_power__t.html#a63a4c620032f345f05b983ef52fb2264", null ],
+    [ "tx3_plvl_3", "struct_ifx_rfe__configure_tx_power__t.html#aab4fea33d6640f2c9c5edc7218b39109", null ],
+    [ "tx3_plvl_4", "struct_ifx_rfe__configure_tx_power__t.html#a09299e538c9ca897f85a0d1948e2e376", null ],
+    [ "tx4_pa_slope_scale_fact", "struct_ifx_rfe__configure_tx_power__t.html#acb823f6c491770f3475973fe9f47a16b", null ],
+    [ "tx4_plvl_1", "struct_ifx_rfe__configure_tx_power__t.html#af460254da668951342b929454aac795b", null ],
+    [ "tx4_plvl_2", "struct_ifx_rfe__configure_tx_power__t.html#a80685120aaadfc785fafcae9a94eebb5", null ],
+    [ "tx4_plvl_3", "struct_ifx_rfe__configure_tx_power__t.html#a659e0e8ec08de67ffec816a31a015077", null ],
+    [ "tx4_plvl_4", "struct_ifx_rfe__configure_tx_power__t.html#a620bcc43132305c3c3cf3d6b5f4db714", null ],
+    [ "tx_pa_slope_scale_fact", "struct_ifx_rfe__configure_tx_power__t.html#aea9012c98b5e20a891832875270516a9", null ]
+];
