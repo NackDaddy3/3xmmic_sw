@@ -253,7 +253,21 @@ Verify I2C bus ID is correct (`/dev/i2c-2`). Check I2C addresses: 0x3E (PMIC_AB)
 
 ## Code Analysis Documentation
 
-Comprehensive code analysis with execution flow, pin mappings, and architecture diagrams:
+Comprehensive code analysis reports with execution flow, pin mappings, and architecture diagrams:
+
+### Standalone Example (Single CTRX_A)
 `src/demo_app/boards/ek1/standalone_example/CTRX8188_Code_Analysis.html`
+
+Detailed analysis of single-chip radar operation with complete pin mappings and execution flow.
+
+### Cascaded Example (3x CTRX8188 Synchronized)
+`src/demo_app/boards/ek1/cascaded_example_v1.1.0/CTRX8188_Cascaded_Code_Analysis.html`
+
+Detailed analysis of three-chip cascaded operation including:
+- PRIMARY/SECONDARY synchronization architecture via LOIN signals
+- Parallel calibration and data streaming patterns
+- Complete pin mappings for all three chips (46 total interconnections)
+- Synchronized ramp execution timing diagrams
+- Triple CSI-2 data stream capture (/dev/video0, /dev/video1, /dev/video2)
 
 Open in browser for detailed documentation with Mermaid flowcharts.

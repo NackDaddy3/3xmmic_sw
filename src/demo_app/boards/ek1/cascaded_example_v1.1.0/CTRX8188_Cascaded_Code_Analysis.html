@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infineon 3x CTRX8188 Cascaded Radar Integration - Code Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #00695c;
+            border-bottom: 3px solid #00695c;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00897b;
+            margin-top: 30px;
+            border-left: 4px solid #00897b;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #26a69a;
+            margin-top: 20px;
+        }
+        .content-section {
+            background-color: white;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step {
+            background-color: #e0f2f1;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #00897b;
+            border-radius: 4px;
+        }
+        .step-number {
+            font-weight: bold;
+            color: #00695c;
+            font-size: 1.1em;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-block {
+            background-color: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #00897b;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .pin-table {
+            font-size: 0.9em;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .mermaid {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .component-box {
+            background-color: #b2dfdb;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 2px solid #00897b;
+        }
+        .note {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            margin: 10px 0;
+        }
+        .warning {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 12px;
+            margin: 10px 0;
+        }
+        .cascaded-note {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Infineon 3x CTRX8188 Cascaded Radar Integration Analysis</h1>
+    <div class="content-section">
+        <p><strong>Project:</strong> MIMOrad - P2S40_3xCTRX8188 Cascaded Example v1.1.0</p>
+        <p><strong>Platform:</strong> NVIDIA Jetson Orin AGX Developer Kit</p>
+        <p><strong>Radar Board:</strong> Infineon P2S40 with 3x CTRX8188 MMIC Radar Chips</p>
+        <p><strong>Firmware Version:</strong> 1.1.0-RamFw_1.0.0-rc3</p>
+        <p><strong>Configuration:</strong> 1 Primary + 2 Secondary Devices in Cascaded Mode</p>
+        <p><strong>Analysis Date:</strong> July 15, 2026</p>
+    </div>
+
+    <div class="content-section">
+        <h2>1. High-Level Overview</h2>
+        <p>This codebase implements a <strong>cascaded radar system</strong> that initializes and operates <strong>three Infineon CTRX8188 radar chips synchronously</strong> (CTRX_A, CTRX_B, and CTRX_C). The primary purpose is to:</p>
+        <ul>
+            <li><strong>Initialize the hardware platform</strong> - Configure GPIO, SPI, and I2C interfaces on the NVIDIA Jetson Orin for three radar chips</li>
+            <li><strong>Power up the radar system</strong> - Enable two PMICs (Power Management ICs) with spread spectrum control for all three chips</li>
+            <li><strong>Configure radar chips in cascaded mode</strong> - CTRX_A as PRIMARY master, CTRX_B and CTRX_C as SECONDARY slaves synchronized via LOIN signals</li>
+            <li><strong>Load chip-specific sequencer programs</strong> - Different programs for primary vs secondary chips to coordinate synchronous operation</li>
+            <li><strong>Execute synchronized radar operations</strong> - Perform chirp sequences across all three chips simultaneously and stream radar data via three MIPI CSI-2 interfaces</li>
+            <li><strong>Provide user interaction</strong> - Allow manual control of synchronized radar operation cycles through console input</li>
+        </ul>
+
+        <div class="cascaded-note">
+            <strong>Cascaded Mode Architecture:</strong> In cascaded mode, CTRX_A acts as the PRIMARY device that generates timing signals. CTRX_B and CTRX_C act as SECONDARY devices synchronized to CTRX_A via LOIN (Local Oscillator Input) signals. This enables coherent MIMO radar operation with synchronized transmit and receive across all 24 RX channels (8 per chip) and up to 12 TX channels (4 per chip).
+        </div>
+
+        <div class="note">
+            <strong>Data Streaming:</strong> Each radar chip streams data through its own dedicated MIPI CSI-2 interface (4 lanes @ 1200 Mbps per chip) to the Jetson Orin's camera subsystem. The three data streams are captured simultaneously as <code>/dev/video0</code> (CTRX_A), <code>/dev/video1</code> (CTRX_B), and <code>/dev/video2</code> (CTRX_C).
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>2. Step-by-Step Execution Flow</h2>
+
+        <div class="step">
+            <p><span class="step-number">Step 1:</span> <strong>Application Initialization</strong></p>
+            <p>The program starts at <code>main()</code> in <code>main.c:44</code> and prints a banner message.</p>
+            <div class="code-block">printf(" === IfxRfe App - p2s40_3x8188_cascaded_example ===\n");</div>
+            <p>Three device suffixes are defined for logging: 'A', 'B', 'C' (<code>main.c:46</code>)</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 2:</span> <strong>PMIC Configuration Objects</strong></p>
+            <p>Two MAX20434 PMIC structures are created (<code>main.c:50-51</code>):</p>
+            <ul>
+                <li><code>pmic_ab</code> (I2C address 0x3E) - Powers CTRX_A and CTRX_B</li>
+                <li><code>pmic_c</code> (I2C address 0x3F) - Powers CTRX_C</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 3:</span> <strong>GPIO Configuration for All Three Chips</strong> (<code>main.c:56-79</code>)</p>
+            <p>Configure all necessary GPIO pins for three-chip operation using <code>PlatformGpio_configure()</code>:</p>
+
+            <h4>General GPIOs (Shared):</h4>
+            <ul>
+                <li><code>GPIO_ID_EN_PMIC</code> - PMIC enable (output, initially LOW)</li>
+                <li><code>GPIO_ID_CTRX_RESET_N</code> - Radar chip reset for all chips (output, initially LOW)</li>
+                <li><code>GPIO_ID_CTRX_OK</code> - Radar chip status indicator shared by all chips (input)</li>
+                <li><code>GPIO_ID_PGOOD_PMIC_LV/HV</code> - PMIC power good signals (inputs)</li>
+            </ul>
+
+            <h4>CTRX_A Specific GPIOs (Primary Device):</h4>
+            <ul>
+                <li><code>GPIO_ID_RFT_A</code> - RFT signal (input)</li>
+                <li><code>GPIO_ID_SPI_SS_A</code> - SPI chip select (output, HIGH when inactive)</li>
+                <li><code>GPIO_ID_DMUX_1_A</code> - Data multiplexer 1 for synchronization (input)</li>
+                <li><code>GPIO_ID_DMUX_2_A</code> - Data multiplexer 2 (input)</li>
+            </ul>
+
+            <h4>CTRX_B Specific GPIOs (Secondary Device):</h4>
+            <ul>
+                <li><code>GPIO_ID_RFT_B</code> - RFT signal (input)</li>
+                <li><code>GPIO_ID_SPI_SS_B</code> - SPI chip select (output, HIGH)</li>
+                <li><code>GPIO_ID_DMUX_1_B</code> - Data multiplexer 1 (input)</li>
+                <li><code>GPIO_ID_DMUX_2_B</code> - Data multiplexer 2 (input)</li>
+            </ul>
+
+            <h4>CTRX_C Specific GPIOs (Secondary Device):</h4>
+            <ul>
+                <li><code>GPIO_ID_RFT_C</code> - RFT signal (input)</li>
+                <li><code>GPIO_ID_SPI_SS_C</code> - SPI chip select (output, HIGH)</li>
+                <li><code>GPIO_ID_DMUX_1_C</code> - Data multiplexer 1 (input)</li>
+                <li><code>GPIO_ID_DMUX_2_C</code> - Data multiplexer 2 (input)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 4:</span> <strong>I2C Initialization</strong> (<code>main.c:82</code>)</p>
+            <p>Initialize I2C bus ID 2 (I2C3 in hardware) for PMIC communication:</p>
+            <div class="code-block">PlatformI2c_init(I2C_ID);</div>
+            <p>This I2C bus connects to both PMIC devices at addresses 0x3E and 0x3F.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 5:</span> <strong>SPI Configuration for Three Chips</strong> (<code>main.c:86-98</code>)</p>
+            <p>Configure SPI for communication with all three CTRX chips:</p>
+            <ul>
+                <li><strong>Device IDs:</strong> 0, 1, 2 (internal IfxRfe device indices)</li>
+                <li><strong>SPI IDs:</strong>
+                    <ul>
+                        <li>CTRX_A: <code>CTRX_A_SPI_ID</code> (0x10)</li>
+                        <li>CTRX_B: <code>CTRX_B_SPI_ID</code> (0x11)</li>
+                        <li>CTRX_C: <code>CTRX_C_SPI_ID</code> (0x12)</li>
+                    </ul>
+                </li>
+                <li><strong>CS GPIO IDs:</strong> GPIO_ID_SPI_SS_A, GPIO_ID_SPI_SS_B, GPIO_ID_SPI_SS_C</li>
+            </ul>
+            <div class="code-block">
+PlatformSpi_init();
+PlatformSpi_setDevIdSpiIdMapping(devIds, spiIds, sizeof(devIds));
+PlatformSpi_setCsGpioIds(spiIds, spiCsGpioIds, sizeof(spiIds));
+            </div>
+            <p><strong>Note:</strong> All three chips share common SPI CLK, MOSI, and MISO lines. Individual chip selection is managed via separate CS GPIO pins.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 6:</span> <strong>IfxRfe Middleware Initialization</strong> (<code>main.c:103-159</code>)</p>
+            <p>Initialize the Infineon Radio Frequency Engine (IfxRfe) middleware with platform abstraction callbacks:</p>
+
+            <h4>SPI Functions with Board-Specific Overrides:</h4>
+            <div class="code-block">
+IfxRfe_spiFunctions_t spiFncs = {
+    .spiConfigure = PlatformSpi_configure,
+    .spiTransfer  = PlatformSpi_transfer_override,  // Custom wrapper with delays
+    .spiWrite     = PlatformSpi_write_override       // Custom wrapper
+};
+            </div>
+            <p>The override functions (defined in <code>3xCtrx8188Wrapper.c</code>) add 2ms delays after reset/LBIST/finish_fw_download commands to allow RFT pin stabilization.</p>
+
+            <h4>GPIO, Time, and Logging Callbacks:</h4>
+            <ul>
+                <li><strong>GPIO Functions:</strong> get, set, configure, isConfigOutput</li>
+                <li><strong>Time Functions:</strong> getDeadLine, now, waitTime</li>
+                <li><strong>Log Callbacks:</strong> error, warning, info</li>
+            </ul>
+
+            <h4>GPIO Definitions for Each CTRX Device:</h4>
+            <p>Three <code>IfxRfe_gpioDefinitions_t</code> structures define GPIO mappings (<code>main.c:126-148</code>):</p>
+            <ul>
+                <li><strong>CTRX_A:</strong> RFT_A, CTRX_OK (shared), DMUX_1_A</li>
+                <li><strong>CTRX_B:</strong> RFT_B, CTRX_OK (shared), DMUX_1_B</li>
+                <li><strong>CTRX_C:</strong> RFT_C, CTRX_OK (shared), DMUX_1_C</li>
+            </ul>
+
+            <div class="code-block">
+EXIT_ON_IFXRFE_ERROR(
+    IfxRfe_init(
+        CTRX_DEV_COUNT,  // 3 devices
+        gpios,
+        spiFncs,
+        gpioFncs,
+        timeFncs,
+        logInterface),
+    cleanup_platform()
+);
+            </div>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 7:</span> <strong>Power-Up Sequence</strong> (<code>main.c:162-188</code>)</p>
+            <p><strong>Critical Timing:</strong> CTRXs must be held in reset during PMIC power-up to avoid GPIO leakage issues.</p>
+
+            <h4>7.1 Assert Reset (main.c:163-164)</h4>
+            <div class="code-block">
+PlatformGpio_set(GPIO_ID_CTRX_RESET_N, false);  // Assert reset (active LOW)
+PlatformTime_waitTime(10);                        // Wait 10ms
+            </div>
+
+            <h4>7.2 Enable PMICs (main.c:166-168)</h4>
+            <div class="code-block">
+PlatformGpio_set(GPIO_ID_EN_PMIC, true);
+PlatformTime_waitTime(10);
+            </div>
+
+            <h4>7.3 Configure Spread Spectrum (main.c:170-174)</h4>
+            <p>Enable ±3% pseudo-random spread spectrum on both PMICs for EMI reduction:</p>
+            <div class="code-block">
+Max20434_enableSpreadSpectrum(&pmic_ab, SSE_3Percent_PseudoRandom);
+Max20434_enableSpreadSpectrum(&pmic_c, SSE_3Percent_PseudoRandom);
+            </div>
+
+            <h4>7.4 PMIC Output Reset Workaround (main.c:176-184)</h4>
+            <div class="warning">
+                <strong>Hardware Workaround:</strong> Due to Jetson GPIO leakage when first connected, PMIC outputs don't power up correctly. The workaround disables and re-enables outputs to reset internal state.
+            </div>
+            <div class="code-block">
+Max20434_setManualOutputEnable(&pmic_ab, false);
+Max20434_setManualOutputEnable(&pmic_c, false);
+PlatformTime_waitTime(100);
+Max20434_setManualOutputEnable(&pmic_ab, true);
+Max20434_setManualOutputEnable(&pmic_c, true);
+PlatformTime_waitTime(10);
+            </div>
+
+            <h4>7.5 De-assert Reset (main.c:186-188)</h4>
+            <div class="code-block">
+PlatformGpio_set(GPIO_ID_CTRX_RESET_N, true);  // Release reset
+PlatformTime_waitTime(10);
+            </div>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 8:</span> <strong>Initialize CTRX_A (Primary Device)</strong> (<code>main.c:192-207</code>)</p>
+
+            <h4>8.1 Prepare Primary Configuration</h4>
+            <p>IRAM descriptor values configure CTRX_A as PRIMARY using LOIN2:</p>
+            <div class="code-block">
+const uint32_t intitializeValuePrimary[] = {
+    15,  // Primary mode using Loin2
+    2,   // Disable CRC32
+    0,   // 1 data packet
+    0,   // Mode a
+    0    // Non-continuous clock mode
+};
+            </div>
+
+            <h4>8.2 Call IfxRfe_ctrxInit</h4>
+            <div class="code-block">
+IfxRfe_ctrxInitConfiguration_t ctrxInitConfig = prepareCtrxInitConfig(PRIMARY);
+ctrxInitConfig.spiClockSpeed = 3125000;  // 3.125 MHz
+ctrxInitConfig.initializeConfig.iram_descriptor = intitializeIndex;
+ctrxInitConfig.initializeConfig.value = intitializeValuePrimary;
+
+IfxRfe_selectDevice(0);  // Select CTRX_A
+IfxRfe_ctrxInit(ctrxInitConfig);
+            </div>
+
+            <p><strong>IfxRfe_ctrxInit performs:</strong></p>
+            <ul>
+                <li>Download RAM firmware to CTRX_A</li>
+                <li>Configure MMIC clock settings</li>
+                <li>Execute initialization with PRIMARY mode parameters</li>
+                <li>Wait for RFT pin to go HIGH (indicates firmware boot success)</li>
+                <li>Transition to low-power state</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 9:</span> <strong>Initialize CTRX_B (Secondary Device)</strong> (<code>main.c:209-216</code>)</p>
+
+            <h4>CTRX_B Configuration as Secondary Using LOIN1:</h4>
+            <div class="code-block">
+const uint32_t intitializeValueSecondary_B[] = {
+    4,   // Secondary mode using Loin1
+    2,   // Disable CRC32
+    0,   // 1 data packet
+    0,   // Mode a
+    0    // Non-continuous clock mode
+};
+
+ctrxInitConfig = prepareCtrxInitConfig(SECONDARY);
+ctrxInitConfig.spiClockSpeed = 3125000;
+ctrxInitConfig.initializeConfig.value = intitializeValueSecondary_B;
+
+IfxRfe_selectDevice(1);  // Select CTRX_B
+IfxRfe_ctrxInit(ctrxInitConfig);
+            </div>
+
+            <p>CTRX_B synchronizes to CTRX_A via LOIN1 signal for phase-coherent operation.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 10:</span> <strong>Initialize CTRX_C (Secondary Device)</strong> (<code>main.c:218-225</code>)</p>
+
+            <h4>CTRX_C Configuration as Secondary Using LOIN2:</h4>
+            <div class="code-block">
+const uint32_t intitializeValueSecondary_C[] = {
+    12,  // Secondary mode using Loin2
+    2,   // Disable CRC32
+    0,   // 1 data packet
+    0,   // Mode c
+    0    // Non-continuous clock mode
+};
+
+ctrxInitConfig = prepareCtrxInitConfig(SECONDARY);
+ctrxInitConfig.spiClockSpeed = 3125000;
+ctrxInitConfig.initializeConfig.value = intitializeValueSecondary_C;
+
+IfxRfe_selectDevice(2);  // Select CTRX_C
+IfxRfe_ctrxInit(ctrxInitConfig);
+            </div>
+
+            <p>CTRX_C synchronizes to CTRX_A via LOIN2 signal (mode c configuration).</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 11:</span> <strong>Load Sequencer Programs</strong> (<code>main.c:228-237</code>)</p>
+
+            <h4>Sequencer Program Differences:</h4>
+            <p>Primary and secondary devices use different sequencer programs to coordinate synchronized operation:</p>
+
+            <h4>11.1 Load Primary Sequencer (CTRX_A):</h4>
+            <div class="code-block">
+const uint32_t sequencer_program_data_primary[] = {
+    // Primary sequencer with trigger enable flags set
+    0x33880024, 0x00000000, 0x01000100, 0x01000100, ...
+};
+
+IfxRfe_selectDevice(0);
+IfxRfe_loadSequencerData(0, sequencer_program_data_primary, length);
+            </div>
+
+            <h4>11.2 Load Secondary Sequencer (CTRX_B and CTRX_C):</h4>
+            <div class="code-block">
+const uint32_t sequencer_program_data_secondary[] = {
+    // Secondary sequencer - responds to primary triggers
+    0x33880024, 0x00000000, 0x01000100, 0x01000100, ...
+};
+
+IfxRfe_selectDevice(1);
+IfxRfe_loadSequencerData(0, sequencer_program_data_secondary, length);
+
+IfxRfe_selectDevice(2);
+IfxRfe_loadSequencerData(0, sequencer_program_data_secondary, length);
+            </div>
+
+            <div class="note">
+                <strong>Sequencer Details:</strong> The sequencer programs define 512 ramps × 512 samples × 8 RX channels per chip. The primary device's sequencer includes trigger enable flags that secondary devices listen for via LOIN synchronization.
+            </div>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 12:</span> <strong>Configure DMUX for Synchronization</strong> (<code>main.c:240-242</code>)</p>
+            <p>Configure DMUX_1 on CTRX_A (primary) as output to signal ramp completion:</p>
+            <div class="code-block">
+IfxRfe_selectDevice(0);
+IfxRfe_configureDmux(_configParams.dmux);
+            </div>
+
+            <p>DMUX_1_A configuration from <code>config.c:54-61</code>:</p>
+            <ul>
+                <li><strong>config_mask:</strong> ConfigMask_DMUX1 (update only DMUX_1)</li>
+                <li><strong>dmux1_alt_signal:</strong> AltSignal_DmuxALevel (map level, not pulse)</li>
+                <li><strong>dmux1_dir:</strong> DmuxDir_out (output)</li>
+            </ul>
+
+            <p>This DMUX signal is used by the host to detect when the ramp scenario completes.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 13:</span> <strong>Configure All Three Chips</strong> (<code>main.c:245-287</code>)</p>
+            <p>Loop through all three devices (i=0,1,2) and configure each with identical radar parameters:</p>
+
+            <h4>For each CTRX (A, B, C):</h4>
+
+            <h5>13.1 Clear Results</h5>
+            <div class="code-block">IfxRfe_clearResults(_configParams.clearResults);</div>
+
+            <h5>13.2 Configure Ramp Scenario</h5>
+            <div class="code-block">IfxRfe_configureRampScenario(_configParams.rampScenario);</div>
+            <p>Sets sequencer start address to 0.</p>
+
+            <h5>13.3 Configure RF Frequency (from config.c)</h5>
+            <div class="code-block">IfxRfe_configureRfFrequency(_configParams.rfFreq);</div>
+            <p>RF Parameters:</p>
+            <ul>
+                <li><strong>nmod:</strong> 62432208 (static frequency ~79.65 GHz)</li>
+                <li><strong>ncw:</strong> 283073584 (lock frequency ~80.988 GHz)</li>
+                <li><strong>rampbw:</strong> 8738128 (~2.5 GHz bandwidth)</li>
+                <li><strong>bc:</strong> 1 (bandwidth control)</li>
+            </ul>
+
+            <h5>13.4 Configure TX Power</h5>
+            <div class="code-block">IfxRfe_configureTxPower(_configParams.txpwr);</div>
+            <p>All TX channels set to power level 0 (configurable per channel).</p>
+
+            <h5>13.5 Configure RX Frontend</h5>
+            <div class="code-block">IfxRfe_configureRx(_configParams.rxcfg);</div>
+            <p>RX Configuration:</p>
+            <ul>
+                <li><strong>Gain:</strong> 0 dB</li>
+                <li><strong>Data Width:</strong> 12 bits</li>
+                <li><strong>Data Rate:</strong> 1200 Mbps per CSI-2 lane</li>
+                <li><strong>Start Mode:</strong> Immediate</li>
+            </ul>
+
+            <h5>13.6 Read Temperature</h5>
+            <div class="code-block">
+IfxRfe_getTemperature(&tempRes);
+printf("   Temperature Sensor 1: %.1f °C\n", tempRes.temp1 / 8.0f);
+printf("   Temperature Sensor 2: %.1f °C\n", tempRes.temp2 / 8.0f);
+            </div>
+
+            <h5>13.7 Execute RX Calibration</h5>
+            <div class="code-block">
+IfxRfe_executeCalibration(_configParams.calibration, NULL);
+            </div>
+            <p>Calibration sub-functions: 0x1B00 (RX calibrations)</p>
+
+            <h5>13.8 Go to Operation Mode</h5>
+            <div class="code-block">
+IfxRfe_gotoOperation();
+IfxRfe_getStatus(&status);
+            </div>
+            <p>Transitions chip from low-power to operational state. Verifies state is 0x10000000 (operational).</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 14:</span> <strong>Execute TX Calibration with Asynchronous Start</strong> (<code>main.c:290-302</code>)</p>
+            <p>TX calibration is performed across all three chips using asynchronous parallel execution:</p>
+
+            <div class="code-block">
+// Set TX calibration sub-functions (all TX calibrations)
+_configParams.calibration.calib_sub_func_id = 0x000F;
+
+// Start CTRX_C calibration (non-blocking)
+IfxRfe_selectDevice(2);
+IfxRfe_executeCalibration_start(_configParams.calibration, &handle_C);
+
+// Start CTRX_B calibration (non-blocking)
+IfxRfe_selectDevice(1);
+IfxRfe_executeCalibration_start(_configParams.calibration, &handle_B);
+
+// Execute CTRX_A calibration (blocking)
+IfxRfe_selectDevice(0);
+IfxRfe_executeCalibration(_configParams.calibration, NULL);
+
+// Wait for CTRX_C to finish
+IfxRfe_selectDevice(2);
+IfxRfe_executeCalibration_finish(handle_C, NULL);
+
+// Wait for CTRX_B to finish
+IfxRfe_selectDevice(1);
+IfxRfe_executeCalibration_finish(handle_B, NULL);
+            </div>
+
+            <p>This pattern allows TX calibration to run concurrently on all three chips, reducing total calibration time.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 15:</span> <strong>Wait for DMUX Ready State</strong> (<code>main.c:305</code>)</p>
+            <div class="code-block">
+PlatformGpio_gpioWait(GPIO_ID_DMUX_1_A, false, 10);
+            </div>
+            <p>Wait for DMUX_1_A to go LOW (indicating primary is ready to start a new ramp). Timeout of 10ms.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 16:</span> <strong>Interactive Operation Loop</strong> (<code>main.c:307-337</code>)</p>
+            <p>Enter an interactive loop for up to 10,000 iterations:</p>
+
+            <h4>16.1 User Prompt</h4>
+            <div class="code-block">
+printf("Enter 'c' to continue or 'e' to exit: ");
+scanf(" %c", &user_input);
+if (user_input == 'e') break;
+            </div>
+
+            <h4>16.2 Read Temperature (CTRX_A)</h4>
+            <div class="code-block">
+IfxRfe_getTemperature(&tempRes);
+printf("   Temperature Sensor 1: %.1f °C\n", tempRes.temp1 / 8.0f);
+            </div>
+
+            <h4>16.3 Start Ramp Scenario on All Chips (Reverse Order)</h4>
+            <p>Critical: Start secondary devices first, then primary to ensure synchronization:</p>
+            <div class="code-block">
+for (int i = 2; i >= 0; i--)  // C, B, A order
+{
+    IfxRfe_selectDevice(i);
+    IfxRfe_startRampScenario();
+}
+            </div>
+
+            <div class="cascaded-note">
+                <strong>Synchronization Strategy:</strong> Secondary devices (C and B) are started first and wait for synchronization signals from the primary (A). The primary device is started last and triggers all devices to execute the ramp scenario simultaneously via LOIN signals.
+            </div>
+
+            <h4>16.4 Wait for Ramp Completion</h4>
+            <div class="code-block">
+PlatformGpio_gpioWait(GPIO_ID_DMUX_1_A, true, 15);
+            </div>
+            <p>Wait for DMUX_1_A to go HIGH (ramp scenario executing). Timeout of 15ms.</p>
+
+            <h4>16.5 Finish Ramp Scenario on All Chips</h4>
+            <div class="code-block">
+for (int i = 0; i < 3; i++)  // A, B, C order
+{
+    IfxRfe_selectDevice(i);
+    IfxRfe_finishRampScenario(NULL);
+}
+            </div>
+            <p>Call finishRampScenario to complete the operation and return chips to ready state.</p>
+        </div>
+
+        <div class="step">
+            <p><span class="step-number">Step 17:</span> <strong>Cleanup and Exit</strong> (<code>main.c:340-343</code>)</p>
+            <p>Upon exit or error, the cleanup function executes:</p>
+            <div class="code-block">
+void cleanup_platform()
+{
+    PlatformGpio_set(GPIO_ID_CTRX_RESET_N, false);  // Reset all CTRXs
+    PlatformI2c_deinit();
+    PlatformSpi_deinit();
+    PlatformGpio_deinit();
+}
+
+cleanup_platform();
+printf(" === SUCCESS ===\n");
+return EXIT_SUCCESS;
+            </div>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>3. Key Components and Their Roles</h2>
+
+        <div class="component-box">
+            <h3>3.1 main.c</h3>
+            <p><strong>Role:</strong> Application entry point and orchestration</p>
+            <ul>
+                <li>Initializes platform (GPIO, SPI, I2C)</li>
+                <li>Manages power-up sequence for PMICs and radar chips</li>
+                <li>Coordinates initialization of three CTRX devices in PRIMARY/SECONDARY modes</li>
+                <li>Loads device-specific sequencer programs</li>
+                <li>Orchestrates synchronized radar operation across all three chips</li>
+                <li>Provides interactive user interface for radar control</li>
+            </ul>
+            <p><strong>Key Functions:</strong></p>
+            <ul>
+                <li><code>main()</code> - Entry point with complete initialization and operation flow</li>
+                <li><code>cleanup_platform()</code> - Cleanup resources on exit</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.2 config.c / config.h</h3>
+            <p><strong>Role:</strong> Radar configuration parameters</p>
+            <ul>
+                <li>Defines RF frequency parameters (79.65-80.988 GHz, 2.5 GHz BW)</li>
+                <li>Configures TX power levels (all channels at 0 dB)</li>
+                <li>Sets RX frontend parameters (0 dB gain, 12-bit data, 1200 Mbps)</li>
+                <li>Defines calibration parameters (RX and TX calibration sub-functions)</li>
+                <li>Configures DMUX for ramp completion signaling</li>
+            </ul>
+            <p><strong>Key Structure:</strong> <code>IfxRfe_demoConfigParams_t</code> - Container for all configuration parameters</p>
+            <p><strong>Key Function:</strong> <code>IrfeDemoConfigInit()</code> - Initializes configuration structure</p>
+        </div>
+
+        <div class="component-box">
+            <h3>3.3 HwDefinitions.h</h3>
+            <p><strong>Role:</strong> Hardware pin mapping definitions</p>
+            <ul>
+                <li>Maps Jetson Orin GPIO port/pin offsets to absolute GPIO numbers</li>
+                <li>Defines GPIO IDs for all three CTRX chips (SPI CS, RFT, DMUX pins)</li>
+                <li>Defines shared control signals (PMIC enable, reset, power good)</li>
+                <li>Maps SPI device IDs (0x10, 0x11, 0x12)</li>
+                <li>Defines I2C bus ID (I2C3 = bus ID 2)</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.4 IfxRfe Middleware (submodules/iRfe/)</h3>
+            <p><strong>Role:</strong> Infineon Radio Frequency Engine API</p>
+            <ul>
+                <li>Provides high-level radar control API</li>
+                <li>Handles SPI command protocol for CTRX8188 chips</li>
+                <li>Manages firmware download and initialization</li>
+                <li>Implements synchronous and asynchronous command execution</li>
+                <li>Supports multi-device management with device selection</li>
+            </ul>
+            <p><strong>Key Functions:</strong></p>
+            <ul>
+                <li><code>IfxRfe_init()</code> - Initialize middleware for multiple devices</li>
+                <li><code>IfxRfe_selectDevice()</code> - Select active device for commands</li>
+                <li><code>IfxRfe_ctrxInit()</code> - Initialize CTRX chip (firmware, clock, state)</li>
+                <li><code>IfxRfe_loadSequencerData()</code> - Load sequencer program</li>
+                <li><code>IfxRfe_startRampScenario()</code> - Start radar chirp sequence</li>
+                <li><code>IfxRfe_finishRampScenario()</code> - Complete radar operation</li>
+                <li><code>IfxRfe_executeCalibration_start()</code> - Non-blocking calibration</li>
+                <li><code>IfxRfe_executeCalibration_finish()</code> - Wait for calibration completion</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.5 IfxRfe_Specific.c/h (8188 chip-specific)</h3>
+            <p><strong>Role:</strong> CTRX8188-specific initialization and firmware management</p>
+            <ul>
+                <li><code>prepareCtrxInitConfig()</code> - Prepares init config for PRIMARY/SECONDARY/STANDALONE modes</li>
+                <li><code>IfxRfe_loadRamFw()</code> - Downloads RAM firmware frames to chip</li>
+                <li>Defines chip-specific initialization parameters</li>
+                <li>Handles firmware download protocol and error clearing</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.6 Platform Layer (submodules/platform-jetson/)</h3>
+            <p><strong>Role:</strong> Hardware abstraction for Jetson Orin platform</p>
+            <ul>
+                <li><strong>PlatformGpio:</strong> GPIO control via libgpiod v1.6
+                    <ul>
+                        <li><code>configure()</code> - Set GPIO direction and initial state</li>
+                        <li><code>get() / set()</code> - Read/write GPIO values</li>
+                        <li><code>gpioWait()</code> - Wait for GPIO state change with timeout</li>
+                    </ul>
+                </li>
+                <li><strong>PlatformSpi:</strong> SPI communication via spidev
+                    <ul>
+                        <li>Manual CS control for multi-frame transactions</li>
+                        <li>3.125 MHz clock speed</li>
+                        <li>Support for multiple device IDs with GPIO CS mapping</li>
+                    </ul>
+                </li>
+                <li><strong>PlatformI2c:</strong> I2C communication via SMBus
+                    <ul>
+                        <li>Used for PMIC control</li>
+                    </ul>
+                </li>
+                <li><strong>PlatformTime:</strong> Time management (delays, timeouts)</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.7 3xCtrx8188Wrapper.c</h3>
+            <p><strong>Role:</strong> Board-specific SPI transfer workarounds</p>
+            <ul>
+                <li><code>PlatformSpi_transfer_override()</code> - Wraps standard transfer with delays</li>
+                <li><code>PlatformSpi_write_override()</code> - Wraps standard write with delays</li>
+                <li>Adds 2ms delay after trigger_reset, trigger_LBIST, and finish_fw_download commands</li>
+                <li>Prevents RFT pin from being read before stabilization (EK1 board-specific issue)</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.8 Max20434Pec.c (pmic_power/)</h3>
+            <p><strong>Role:</strong> MAX20434 PMIC control driver</p>
+            <ul>
+                <li><code>Max20434_enableSpreadSpectrum()</code> - Configure spread spectrum mode</li>
+                <li><code>Max20434_setManualOutputEnable()</code> - Enable/disable PMIC outputs</li>
+                <li>Communicates via I2C at addresses 0x3E and 0x3F</li>
+            </ul>
+        </div>
+
+        <div class="component-box">
+            <h3>3.9 capture_all_8x512x512.sh</h3>
+            <p><strong>Role:</strong> Parallel data capture script for three radar streams</p>
+            <ul>
+                <li>Captures radar data from three V4L2 video devices simultaneously</li>
+                <li>Configures format: RAW12, 4096×512 pixels (8 RX channels × 512 samples × 512 ramps)</li>
+                <li>Outputs: ctrx0_bin.raw, ctrx1_bin.raw, ctrx2_bin.raw</li>
+                <li>Runs three <code>v4l2-ctl</code> instances in parallel</li>
+                <li>Must be executed after radar enters operational mode</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>4. Pin Interconnections - J509 Camera Connector to Radar Board</h2>
+        <p>The radar board connects to the Jetson Orin AGX via the <strong>Camera Connector J509</strong> through a ribbon cable. This section details all pins used during cascaded 3-chip operation.</p>
+
+        <h3>4.1 Power and Control Signals</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson Pin</th>
+                    <th>GPIO ID</th>
+                    <th>Direction</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>EN_PMIC</td>
+                    <td>PH.01 (GPIO 349)</td>
+                    <td>GPIO_ID_EN_PMIC</td>
+                    <td>Output</td>
+                    <td>Enable both PMICs (PMIC_AB and PMIC_C)</td>
+                </tr>
+                <tr>
+                    <td>CTRX_RESET_N</td>
+                    <td>PH.06 (GPIO 354)</td>
+                    <td>GPIO_ID_CTRX_RESET_N</td>
+                    <td>Output</td>
+                    <td>Active-LOW reset for all three CTRX chips</td>
+                </tr>
+                <tr>
+                    <td>CTRX_OK</td>
+                    <td>PBB.02 (GPIO 318)</td>
+                    <td>GPIO_ID_CTRX_OK</td>
+                    <td>Input</td>
+                    <td>Status indicator (shared by all three chips)</td>
+                </tr>
+                <tr>
+                    <td>PGOOD_PMIC_LV</td>
+                    <td>PAC.02 (GPIO 488)</td>
+                    <td>GPIO_ID_PGOOD_PMIC_LV</td>
+                    <td>Input</td>
+                    <td>Low-voltage PMIC power good indicator</td>
+                </tr>
+                <tr>
+                    <td>PGOOD_PMIC_HV</td>
+                    <td>PAC.03 (GPIO 489)</td>
+                    <td>GPIO_ID_PGOOD_PMIC_HV</td>
+                    <td>Input</td>
+                    <td>High-voltage PMIC power good indicator</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.2 SPI Interface (Shared Bus)</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson SPI Bus</th>
+                    <th>Linux Device</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SPI_CLK</td>
+                    <td>SPI1</td>
+                    <td>/dev/spidev1.0</td>
+                    <td>Shared SPI clock (3.125 MHz)</td>
+                </tr>
+                <tr>
+                    <td>SPI_MOSI</td>
+                    <td>SPI1</td>
+                    <td>/dev/spidev1.0</td>
+                    <td>Shared SPI Master Out Slave In</td>
+                </tr>
+                <tr>
+                    <td>SPI_MISO</td>
+                    <td>SPI1</td>
+                    <td>/dev/spidev1.0</td>
+                    <td>Shared SPI Master In Slave Out</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.3 CTRX_A Specific Signals (Primary Device)</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson Pin</th>
+                    <th>GPIO ID</th>
+                    <th>Direction</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SPI_SS_A</td>
+                    <td>PAC.04 (GPIO 490)</td>
+                    <td>GPIO_ID_SPI_SS_A</td>
+                    <td>Output</td>
+                    <td>SPI chip select for CTRX_A (active LOW)</td>
+                </tr>
+                <tr>
+                    <td>RFT_A</td>
+                    <td>PDD.00 (GPIO 336)</td>
+                    <td>GPIO_ID_RFT_A</td>
+                    <td>Input</td>
+                    <td>Request for Transfer - firmware boot indicator</td>
+                </tr>
+                <tr>
+                    <td>DMUX_1_A</td>
+                    <td>PAA.07 (GPIO 323)</td>
+                    <td>GPIO_ID_DMUX_1_A</td>
+                    <td>Input</td>
+                    <td>Ramp scenario completion signal (primary)</td>
+                </tr>
+                <tr>
+                    <td>DMUX_2_A</td>
+                    <td>PH.05 (GPIO 353)</td>
+                    <td>GPIO_ID_DMUX_2_A</td>
+                    <td>Input</td>
+                    <td>Data multiplexer 2 (not used in this example)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.4 CTRX_B Specific Signals (Secondary Device)</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson Pin</th>
+                    <th>GPIO ID</th>
+                    <th>Direction</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SPI_SS_B</td>
+                    <td>PCC.03 (GPIO 331)</td>
+                    <td>GPIO_ID_SPI_SS_B</td>
+                    <td>Output</td>
+                    <td>SPI chip select for CTRX_B (active LOW)</td>
+                </tr>
+                <tr>
+                    <td>RFT_B</td>
+                    <td>PAC.01 (GPIO 487)</td>
+                    <td>GPIO_ID_RFT_B</td>
+                    <td>Input</td>
+                    <td>Request for Transfer - firmware boot indicator</td>
+                </tr>
+                <tr>
+                    <td>DMUX_1_B</td>
+                    <td>PCC.07 (GPIO 335)</td>
+                    <td>GPIO_ID_DMUX_1_B</td>
+                    <td>Input</td>
+                    <td>Data multiplexer 1 (not monitored in this example)</td>
+                </tr>
+                <tr>
+                    <td>DMUX_2_B</td>
+                    <td>PP.00 (GPIO 440)</td>
+                    <td>GPIO_ID_DMUX_2_B</td>
+                    <td>Input</td>
+                    <td>Data multiplexer 2 (not used)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.5 CTRX_C Specific Signals (Secondary Device)</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson Pin</th>
+                    <th>GPIO ID</th>
+                    <th>Direction</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SPI_SS_C</td>
+                    <td>PAA.04 (GPIO 320)</td>
+                    <td>GPIO_ID_SPI_SS_C</td>
+                    <td>Output</td>
+                    <td>SPI chip select for CTRX_C (active LOW)</td>
+                </tr>
+                <tr>
+                    <td>RFT_C</td>
+                    <td>PN.00 (GPIO 432)</td>
+                    <td>GPIO_ID_RFT_C</td>
+                    <td>Input</td>
+                    <td>Request for Transfer - firmware boot indicator</td>
+                </tr>
+                <tr>
+                    <td>DMUX_1_C</td>
+                    <td>PN.07 (GPIO 439)</td>
+                    <td>GPIO_ID_DMUX_1_C</td>
+                    <td>Input</td>
+                    <td>Data multiplexer 1 (not monitored)</td>
+                </tr>
+                <tr>
+                    <td>DMUX_2_C</td>
+                    <td>PAC.00 (GPIO 486)</td>
+                    <td>GPIO_ID_DMUX_2_C</td>
+                    <td>Input</td>
+                    <td>Data multiplexer 2 (not used)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.6 I2C Interface</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>Signal Name</th>
+                    <th>Jetson I2C Bus</th>
+                    <th>Linux Device</th>
+                    <th>I2C Addresses</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>I2C3_SCL</td>
+                    <td>I2C3</td>
+                    <td>/dev/i2c-2</td>
+                    <td rowspan="2">0x3E (PMIC_AB)<br>0x3F (PMIC_C)</td>
+                    <td>I2C clock for PMIC communication</td>
+                </tr>
+                <tr>
+                    <td>I2C3_SDA</td>
+                    <td>I2C3</td>
+                    <td>/dev/i2c-2</td>
+                    <td>I2C data for PMIC communication</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.7 MIPI CSI-2 Data Interfaces (3x Independent Streams)</h3>
+        <table class="pin-table">
+            <thead>
+                <tr>
+                    <th>CTRX Device</th>
+                    <th>CSI-2 Interface</th>
+                    <th>Lanes Used</th>
+                    <th>Data Rate</th>
+                    <th>V4L2 Device</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CTRX_A (Primary)</td>
+                    <td>CSI-2 Port 0</td>
+                    <td>4 data lanes + clock</td>
+                    <td>1200 Mbps/lane</td>
+                    <td>/dev/video0</td>
+                    <td>Streams 8 RX channels × 512 samples × 512 ramps</td>
+                </tr>
+                <tr>
+                    <td>CTRX_B (Secondary)</td>
+                    <td>CSI-2 Port 1</td>
+                    <td>4 data lanes + clock</td>
+                    <td>1200 Mbps/lane</td>
+                    <td>/dev/video1</td>
+                    <td>Streams 8 RX channels × 512 samples × 512 ramps</td>
+                </tr>
+                <tr>
+                    <td>CTRX_C (Secondary)</td>
+                    <td>CSI-2 Port 2</td>
+                    <td>4 data lanes + clock</td>
+                    <td>1200 Mbps/lane</td>
+                    <td>/dev/video2</td>
+                    <td>Streams 8 RX channels × 512 samples × 512 ramps</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="note">
+            <strong>Data Format:</strong> Each CSI-2 stream carries RAW12 format data (12-bit samples padded to 16-bit by NVIDIA). Frame size: 4096 × 512 pixels per device. Total data per chirp cycle: ~12 MB across three streams.
+        </div>
+
+        <h3>4.8 Pin Summary by Function</h3>
+        <ul>
+            <li><strong>Total GPIO Pins Used:</strong> 23 (5 shared control + 6 per CTRX × 3 devices)</li>
+            <li><strong>Total SPI Lines:</strong> 3 shared (CLK, MOSI, MISO) + 3 CS (one per chip)</li>
+            <li><strong>Total I2C Lines:</strong> 2 (SCL, SDA) shared by both PMICs</li>
+            <li><strong>Total CSI-2 Lanes:</strong> 15 (3 ports × 4 data lanes + 1 clock lane each)</li>
+        </ul>
+    </div>
+
+    <div class="content-section">
+        <h2>5. Cascaded Operation Flow - Mermaid Diagram</h2>
+        <div class="mermaid">
+graph TD
+    A[Start Application] --> B[Initialize GPIO Pins<br/>23 total pins for 3 chips]
+    B --> C[Initialize I2C Bus<br/>/dev/i2c-2]
+    C --> D[Initialize SPI<br/>/dev/spidev1.0<br/>3.125 MHz]
+    D --> E[Initialize IfxRfe Middleware<br/>3 devices, callbacks]
+
+    E --> F[Assert RESET_N LOW<br/>Hold all CTRXs in reset]
+    F --> G[Enable PMICs<br/>EN_PMIC = HIGH]
+    G --> H[Configure Spread Spectrum<br/>±3% pseudo-random on both PMICs]
+    H --> I[PMIC Output Reset Workaround<br/>Disable → 100ms → Enable]
+    I --> J[De-assert RESET_N HIGH<br/>Release all CTRXs from reset]
+
+    J --> K[Initialize CTRX_A PRIMARY<br/>Load firmware, LOIN2 master mode]
+    K --> L[Initialize CTRX_B SECONDARY<br/>Load firmware, LOIN1 slave mode]
+    L --> M[Initialize CTRX_C SECONDARY<br/>Load firmware, LOIN2 slave mode]
+
+    M --> N[Load Primary Sequencer to CTRX_A<br/>512 ramps, trigger enable flags]
+    N --> O[Load Secondary Sequencer to CTRX_B<br/>512 ramps, responds to triggers]
+    O --> P[Load Secondary Sequencer to CTRX_C<br/>512 ramps, responds to triggers]
+
+    P --> Q[Configure DMUX_1_A as Output<br/>Ramp completion signal]
+
+    Q --> R[Configure All 3 Chips Loop<br/>Clear results, ramp scenario, RF, TX, RX]
+    R --> S[Read Temperature Each Chip]
+    S --> T[Execute RX Calibration Each Chip<br/>0x1B00 subfunctions]
+    T --> U[Go to Operation Mode Each Chip<br/>Verify state 0x10000000]
+
+    U --> V[Execute TX Calibration Parallel<br/>Start C, Start B, Execute A<br/>Finish C, Finish B]
+
+    V --> W[Wait for DMUX_1_A LOW<br/>Ready state]
+
+    W --> X{User Input Loop<br/>Press 'c' or 'e'}
+    X -->|'e' Exit| Z[Cleanup Platform]
+    X -->|'c' Continue| Y[Read Temperature CTRX_A]
+
+    Y --> AA[Start Ramp Scenarios<br/>REVERSE ORDER: C → B → A]
+    AA --> AB[CTRX_C: startRampScenario<br/>Waits for primary trigger]
+    AB --> AC[CTRX_B: startRampScenario<br/>Waits for primary trigger]
+    AC --> AD[CTRX_A: startRampScenario<br/>Triggers via LOIN signals]
+
+    AD --> AE[Wait for DMUX_1_A HIGH<br/>Ramp executing, 15ms timeout]
+
+    AE --> AF[Finish Ramp Scenarios<br/>FORWARD ORDER: A → B → C]
+    AF --> AG[CTRX_A: finishRampScenario]
+    AG --> AH[CTRX_B: finishRampScenario]
+    AH --> AI[CTRX_C: finishRampScenario]
+
+    AI --> AJ[CSI-2 Data Streaming<br/>3 parallel streams to Jetson VI]
+    AJ --> AK[CTRX_A → /dev/video0<br/>4096×512 RAW12]
+    AJ --> AL[CTRX_B → /dev/video1<br/>4096×512 RAW12]
+    AJ --> AM[CTRX_C → /dev/video2<br/>4096×512 RAW12]
+
+    AK --> X
+    AL --> X
+    AM --> X
+
+    Z --> AN[Assert RESET_N LOW<br/>Stop all radar operations]
+    AN --> AO[Deinitialize I2C, SPI, GPIO]
+    AO --> AP[Print SUCCESS<br/>Exit application]
+
+    style K fill:#b3e5fc
+    style L fill:#b3e5fc
+    style M fill:#b3e5fc
+    style AA fill:#fff9c4
+    style AB fill:#c8e6c9
+    style AC fill:#c8e6c9
+    style AD fill:#ffccbc
+    style AJ fill:#f8bbd0
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>6. Synchronization and Cascading Architecture</h2>
+
+        <h3>6.1 Primary-Secondary Synchronization</h3>
+        <div class="cascaded-note">
+            <p><strong>How Cascading Works:</strong></p>
+            <ul>
+                <li><strong>CTRX_A (Primary):</strong> Generates local oscillator signals on LOIN1 and LOIN2 outputs</li>
+                <li><strong>CTRX_B (Secondary):</strong> Receives clock from CTRX_A via LOIN1 input</li>
+                <li><strong>CTRX_C (Secondary):</strong> Receives clock from CTRX_A via LOIN2 input</li>
+                <li><strong>Phase Coherence:</strong> All three chips share the same LO signal, enabling coherent MIMO radar processing</li>
+            </ul>
+        </div>
+
+        <h3>6.2 Initialization Mode Configuration</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Mode</th>
+                    <th>LOIN Config Value</th>
+                    <th>Synchronization</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CTRX_A</td>
+                    <td>PRIMARY</td>
+                    <td>15 (LOIN2 master)</td>
+                    <td>Generates LO for B and C</td>
+                </tr>
+                <tr>
+                    <td>CTRX_B</td>
+                    <td>SECONDARY</td>
+                    <td>4 (LOIN1 slave)</td>
+                    <td>Locked to CTRX_A LOIN1</td>
+                </tr>
+                <tr>
+                    <td>CTRX_C</td>
+                    <td>SECONDARY</td>
+                    <td>12 (LOIN2 slave)</td>
+                    <td>Locked to CTRX_A LOIN2</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>6.3 Sequencer Program Differences</h3>
+        <div class="note">
+            <p><strong>Primary Sequencer:</strong> Contains trigger enable flags that secondary devices monitor. When primary starts a ramp, it sends synchronization signals via LOIN that secondary devices detect and respond to.</p>
+            <p><strong>Secondary Sequencer:</strong> Configured to wait for external trigger signals. When LOIN signals indicate primary has started, secondary devices execute their sequencer programs in lockstep.</p>
+        </div>
+
+        <h3>6.4 Ramp Execution Timing</h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Host as Jetson Host
+    participant A as CTRX_A Primary
+    participant B as CTRX_B Secondary
+    participant C as CTRX_C Secondary
+
+    Host->>C: startRampScenario()
+    Note over C: Armed, waiting for trigger
+    Host->>B: startRampScenario()
+    Note over B: Armed, waiting for trigger
+    Host->>A: startRampScenario()
+    Note over A: Starts immediately
+    A->>B: LOIN1 sync signal
+    A->>C: LOIN2 sync signal
+    Note over A,C: All 3 chips ramp simultaneously
+
+    par Parallel Execution
+        A->>A: Execute 512 ramps
+    and
+        B->>B: Execute 512 ramps
+    and
+        C->>C: Execute 512 ramps
+    end
+
+    A->>Host: DMUX_1_A goes HIGH
+    Note over Host: Wait for completion
+
+    par Data Streaming
+        A->>Host: RAW12 data → /dev/video0
+    and
+        B->>Host: RAW12 data → /dev/video1
+    and
+        C->>Host: RAW12 data → /dev/video2
+    end
+
+    Host->>A: finishRampScenario()
+    Host->>B: finishRampScenario()
+    Host->>C: finishRampScenario()
+    Note over A,C: Return to ready state
+        </div>
+
+        <h3>6.5 MIMO Radar Capabilities</h3>
+        <div class="component-box">
+            <h4>Total System Resources:</h4>
+            <ul>
+                <li><strong>RX Channels:</strong> 24 (8 per chip × 3 chips)</li>
+                <li><strong>TX Channels:</strong> Up to 12 (4 per chip × 3 chips, configurable)</li>
+                <li><strong>Virtual Channels:</strong> Up to 288 (24 RX × 12 TX in TDM mode)</li>
+                <li><strong>Samples per Chirp:</strong> 512</li>
+                <li><strong>Chirps per Frame:</strong> 512</li>
+                <li><strong>Data Width:</strong> 12 bits per sample</li>
+                <li><strong>Frame Size:</strong> ~12 MB total (4 MB per chip)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>7. Data Capture and Processing</h2>
+
+        <h3>7.1 Simultaneous Multi-Stream Capture</h3>
+        <p>The <code>capture_all_8x512x512.sh</code> script captures data from all three radar chips simultaneously:</p>
+        <div class="code-block">
+# Launch three v4l2-ctl instances in parallel
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=4096,height=512,pixelformat=RG12 \
+    --set-ctrl bypass_mode=0 --stream-mmap --stream-count=1 \
+    --stream-to=ctrx0_bin.raw &
+
+v4l2-ctl -d /dev/video1 --set-fmt-video=width=4096,height=512,pixelformat=RG12 \
+    --set-ctrl bypass_mode=0 --stream-mmap --stream-count=1 \
+    --stream-to=ctrx1_bin.raw &
+
+v4l2-ctl -d /dev/video2 --set-fmt-video=width=4096,height=512,pixelformat=RG12 \
+    --set-ctrl bypass_mode=0 --stream-mmap --stream-count=1 \
+    --stream-to=ctrx2_bin.raw &
+
+wait  # Wait for all captures to complete
+        </div>
+
+        <h3>7.2 Data Format Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Pixel Format</td>
+                    <td>RG12 (RAW12)</td>
+                    <td>12-bit data padded to 16-bit by NVIDIA</td>
+                </tr>
+                <tr>
+                    <td>Frame Width</td>
+                    <td>4096 pixels</td>
+                    <td>8 RX channels × 512 samples</td>
+                </tr>
+                <tr>
+                    <td>Frame Height</td>
+                    <td>512 lines</td>
+                    <td>512 ramps (chirps)</td>
+                </tr>
+                <tr>
+                    <td>Bytes per Sample</td>
+                    <td>2 bytes</td>
+                    <td>12-bit data in 16-bit container</td>
+                </tr>
+                <tr>
+                    <td>Frame Size (per chip)</td>
+                    <td>4,194,304 bytes</td>
+                    <td>4096 × 512 × 2 = 4 MB</td>
+                </tr>
+                <tr>
+                    <td>Total Frame Size</td>
+                    <td>12,582,912 bytes</td>
+                    <td>~12 MB across 3 chips</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>7.3 CSI-2 Receiver Configuration</h3>
+        <div class="warning">
+            <strong>Important Timing Constraint:</strong> The CSI-2 receiver only activates when the radar is in operational mode with an active clock. The capture script must be started AFTER the radar application prints "Enter 'c' to continue" and radar enters operational state. Starting capture before this will fail because lane termination won't be enabled.
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>8. Key Differences from Standalone Example</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Standalone Example</th>
+                    <th>Cascaded Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Number of Devices</td>
+                    <td>1 (CTRX_A only)</td>
+                    <td>3 (CTRX_A, CTRX_B, CTRX_C)</td>
+                </tr>
+                <tr>
+                    <td>Device Configuration</td>
+                    <td>STANDALONE mode</td>
+                    <td>1 PRIMARY + 2 SECONDARY modes</td>
+                </tr>
+                <tr>
+                    <td>Synchronization</td>
+                    <td>None (single device)</td>
+                    <td>LOIN signals (phase-coherent)</td>
+                </tr>
+                <tr>
+                    <td>Sequencer Programs</td>
+                    <td>Single program</td>
+                    <td>Primary program (with triggers) + Secondary program (trigger-responsive)</td>
+                </tr>
+                <tr>
+                    <td>SPI Configuration</td>
+                    <td>1 device, 1 CS line</td>
+                    <td>3 devices, 3 CS lines, shared bus</td>
+                </tr>
+                <tr>
+                    <td>GPIO Pins</td>
+                    <td>11 total</td>
+                    <td>23 total (5 shared + 6 per device × 3)</td>
+                </tr>
+                <tr>
+                    <td>TX Calibration</td>
+                    <td>Synchronous (single device)</td>
+                    <td>Asynchronous parallel (start/finish pattern)</td>
+                </tr>
+                <tr>
+                    <td>Ramp Start Order</td>
+                    <td>Single device</td>
+                    <td>Reverse order (C→B→A) to ensure secondary devices armed first</td>
+                </tr>
+                <tr>
+                    <td>DMUX Monitoring</td>
+                    <td>DMUX_1_A only</td>
+                    <td>DMUX_1_A only (primary indicates completion for all)</td>
+                </tr>
+                <tr>
+                    <td>CSI-2 Streams</td>
+                    <td>1 stream (/dev/video0)</td>
+                    <td>3 streams (/dev/video0, /dev/video1, /dev/video2)</td>
+                </tr>
+                <tr>
+                    <td>RX Channels</td>
+                    <td>8 channels (single chip)</td>
+                    <td>24 channels (8 per chip × 3)</td>
+                </tr>
+                <tr>
+                    <td>Data Capture</td>
+                    <td>Single v4l2-ctl instance</td>
+                    <td>Three parallel v4l2-ctl instances</td>
+                </tr>
+                <tr>
+                    <td>Total Data per Frame</td>
+                    <td>~4 MB</td>
+                    <td>~12 MB</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="content-section">
+        <h2>9. Critical Timing and Synchronization Constraints</h2>
+
+        <div class="warning">
+            <h3>9.1 Power-Up Sequence</h3>
+            <ul>
+                <li>CTRX_RESET_N must be LOW during PMIC power-up (prevents GPIO leakage issues)</li>
+                <li>Minimum 10ms delay after PMIC enable before releasing reset</li>
+                <li>PMIC output reset workaround: 100ms disable period required</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>9.2 SPI Communication</h3>
+            <ul>
+                <li>Maximum SPI clock speed: 3.125 MHz (higher speeds cause communication failures)</li>
+                <li>2ms delay required after reset/LBIST/finish_fw_download commands for RFT stabilization</li>
+                <li>Manual CS control required to maintain CS assertion across multi-frame transfers</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>9.3 Cascaded Ramp Execution</h3>
+            <ul>
+                <li>Secondary devices must be armed BEFORE primary device (reverse order: C→B→A)</li>
+                <li>Primary device triggers all devices simultaneously via LOIN signals</li>
+                <li>DMUX_1_A LOW indicates ready state (timeout 10ms)</li>
+                <li>DMUX_1_A HIGH indicates ramp executing (timeout 15ms)</li>
+                <li>All devices must finish in forward order (A→B→C) for proper cleanup</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>9.4 CSI-2 Data Capture</h3>
+            <ul>
+                <li>Capture must start AFTER radar enters operational mode</li>
+                <li>CSI-2 receiver requires active clock from radar to enable lane termination</li>
+                <li>Three captures must run in parallel to avoid data loss</li>
+                <li>Continuous clock mode disabled (controlled by sequencer program)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h2>10. Error Handling and Macros</h2>
+        <p>The application uses two primary error-handling macros defined in <code>error_macros.h</code>:</p>
+
+        <div class="code-block">
+EXIT_ON_PLATFORM_ERROR(function_call, cleanup_action)
+- Checks return value of platform functions
+- Executes cleanup_action and exits if error occurs
+- Used for GPIO, SPI, I2C initialization and operations
+
+EXIT_ON_IFXRFE_ERROR(function_call, cleanup_action)
+- Checks return value of IfxRfe API functions
+- Executes cleanup_action and exits if error occurs
+- Used for all radar chip configuration and control commands
+        </div>
+
+        <p><strong>Cleanup Strategy:</strong> All critical sections use these macros to ensure proper resource cleanup on failure. The <code>cleanup_platform()</code> function resets radar chips and deinitializes all platform resources.</p>
+    </div>
+
+    <div class="content-section">
+        <h2>11. Configuration Parameters (config.c)</h2>
+
+        <h3>11.1 RF Frequency Configuration</h3>
+        <ul>
+            <li><strong>nmod:</strong> 62432208 (static frequency ~79.65 GHz)</li>
+            <li><strong>ncw:</strong> 283073584 (lock frequency ~80.988 GHz)</li>
+            <li><strong>rampbw:</strong> 8738128 (~2.5 GHz chirp bandwidth)</li>
+            <li><strong>bc:</strong> 1 (bandwidth control parameter)</li>
+        </ul>
+
+        <h3>11.2 TX Power Configuration</h3>
+        <ul>
+            <li><strong>action_mask:</strong> Configure power levels and slope scaling</li>
+            <li><strong>ch_mask:</strong> 0xFF (all 8 TX channels)</li>
+            <li><strong>plvl[]:</strong> All set to 0 (minimum power, configurable per channel)</li>
+            <li><strong>tx_pa_slope_scale_fact:</strong> 256 (slope scaling factor)</li>
+        </ul>
+
+        <h3>11.3 RX Configuration</h3>
+        <ul>
+            <li><strong>gain_sel:</strong> 0 dB</li>
+            <li><strong>data_width_sel:</strong> 12 bits</li>
+            <li><strong>data_rate_sel:</strong> 1200 Mbps per lane</li>
+            <li><strong>start_mode:</strong> Immediate (no external trigger)</li>
+        </ul>
+
+        <h3>11.4 Calibration Parameters</h3>
+        <ul>
+            <li><strong>RX Calibration:</strong> 0x1B00 (all RX calibration sub-functions)</li>
+            <li><strong>TX Calibration:</strong> 0x000F (all TX calibration sub-functions)</li>
+            <li><strong>tx_ch_pow_idx:</strong> 0xFFFFFFFF (all TX channels, all power levels)</li>
+            <li><strong>limit_temp:</strong> 0 (calibrate regardless of temperature)</li>
+        </ul>
+    </div>
+
+    <div class="content-section">
+        <h2>12. Summary</h2>
+        <p>This cascaded 3x CTRX8188 radar application demonstrates a sophisticated multi-chip MIMO radar system with the following key characteristics:</p>
+
+        <ul>
+            <li><strong>Scalable Architecture:</strong> Extends from single-chip to three-chip operation with primary-secondary synchronization</li>
+            <li><strong>Phase-Coherent Operation:</strong> LOIN signals ensure all three chips operate with locked local oscillators for coherent radar processing</li>
+            <li><strong>Parallel Processing:</strong> Asynchronous calibration and parallel data streaming maximize system throughput</li>
+            <li><strong>Robust Error Handling:</strong> Comprehensive cleanup on all error paths prevents resource leaks</li>
+            <li><strong>Hardware Workarounds:</strong> Includes board-specific fixes for PMIC output reset and SPI timing issues</li>
+            <li><strong>Interactive Operation:</strong> User-controlled radar chirp execution with temperature monitoring</li>
+            <li><strong>Triple Data Streams:</strong> Simultaneous capture from three independent CSI-2 interfaces totaling 24 RX channels</li>
+        </ul>
+
+        <p><strong>Total Pin Count:</strong> 23 GPIOs + 3 SPI shared + 3 SPI CS + 2 I2C + 15 CSI-2 lanes = 46 interconnects between Jetson Orin and radar board via J509 camera connector.</p>
+
+        <div class="note">
+            <strong>Future Enhancement:</strong> This system is designed to integrate GMSL SERDES links for long-distance radar data transmission, enabling remote radar sensor deployments while maintaining phase-coherent operation across multiple radar arrays.
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: true,
+                actorMargin: 50
+            }
+        });
+    </script>
+</body>
+</html>
